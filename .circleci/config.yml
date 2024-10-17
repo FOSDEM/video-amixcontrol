@@ -15,10 +15,17 @@ jobs:
 
     steps:
     - run: apt-get update
-    - run: apt-get -y install build-essential git openssh-client dpkg-dev debhelper dh-python pybuild-plugin-pyproject python3-all python3-setuptools
+    - run: apt-get install -y debian-archive-keyring
+    - run: apt-get install -y gnupg curl ca-certificates apt-transport-https
+    - run: mkdir -p /etc/apt/keyrings/
+    - run: curl -fsSL https://packagecloud.io/fosdem/video-team/gpgkey | gpg --dearmor > /etc/apt/keyrings/fosdem_video-team-archive-keyring.gpg
+    - run: mkdir -p /etc/apt/sources.list.d/
+    - run: echo "deb [signed-by=/etc/apt/keyrings/fosdem_video-team-archive-keyring.gpg] https://packagecloud.io/fosdem/video-team/debian bookworm main" > /etc/apt/sources.list.d/fosdem_video-team.list
+    - run: apt-get update
+    - run: apt-get -y install build-essential git openssh-client dpkg-dev debhelper dh-python pybuild-plugin-pyproject python3-all python3-setuptools python3-serial python3-osc
     - checkout
-    - run: ./generate_release.sh
-    - run: make -f debian/rules binary
+    - run: cd osc-lib && ../generate_release.sh
+    - run: cd osc-lib && make -f debian/rules binary
     - run: mkdir -p /root/build
     - run: mv ../*.deb /root/build
     - persist_to_workspace:
