@@ -1,0 +1,22 @@
+Source: python-fosdemosc
+Section: python
+Priority: optional
+Build-Depends:
+ debhelper (>= 11~),
+ dh-python,
+ pybuild-plugin-pyproject,
+ debhelper-compat (= 12),
+ python3-all,
+ python3-setuptools,
+ python3-serial,
+ python3-osc
+Testsuite: autopkgtest-pkg-pybuild
+Maintainer: Albert Stefanov <albert@kmail.bg>
+Standards-Version: 4.6.2
+
+Package: python3-fosdemosc
+X-Python3-Version: >= 3.10
+Architecture: all
+Depends: ${python3:Depends}, ${misc:Depends}, python3-serial, python3-osc
+Description: Fosdem Mixer Control Bridge
+ Python-OSC bridge for the FOSDEM mixers
