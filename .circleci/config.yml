@@ -1,0 +1,56 @@
+---
+version: 2.1
+
+executors:
+  debian:
+    docker:
+    - image: debian:bookworm
+  ruby:
+    docker:
+    - image: circleci/ruby:latest
+
+jobs:
+  build:
+    executor: debian
+
+    steps:
+    - run: apt-get update
+    - run: apt-get -y install build-essential git openssh-client dpkg-dev debhelper dh-python pybuild-plugin-pyproject python3-all python3-setuptools
+    - checkout
+    - run: ./generate_release.sh
+    - run: make -f debian/rules binary
+    - run: mkdir -p /root/build
+    - run: mv ../*.deb /root/build
+    - persist_to_workspace:
+        root: /root/build
+        paths:
+        - .
+    - store_artifacts:
+        path: /root/build
+
+  package:
+    executor: ruby
+
+    steps:
+    - attach_workspace:
+        at: .
+    - run: gem install package_cloud
+    - run: find .
+    - run: package_cloud push fosdem/video-team/debian/bookworm *deb
+
+workflows:
+  version: 2
+  python-fosdemosc:
+    jobs:
+    - build:
+        filters:
+          tags:
+            only: /.*/
+    - package:
+        requires:
+        - build
+        filters:
+          tags:
+            only: /^v.*/
+          branches:
+            ignore: /.*/
