@@ -1,0 +1,25 @@
+Source: fosdem-mixer-cli
+Section: python
+Priority: optional
+Build-Depends:
+ debhelper (>= 11~),
+ dh-python,
+ pybuild-plugin-pyproject,
+ debhelper-compat (= 12),
+ python3-all,
+ python3-setuptools,
+ python3-click,
+ python3-click-repl,
+ python3-tabulate,
+ python3-serial,
+# python3-fosdemosc
+Testsuite: autopkgtest-pkg-pybuild
+Maintainer: Albert Stefanov <albert@kmail.bg>
+Standards-Version: 4.6.2
+
+Package: fosdem-mixer-cli
+X-Python3-Version: >= 3.10
+Architecture: all
+Depends: ${python3:Depends}, ${misc:Depends}, python3-click, python3-click-repl, python3-tabulate, python3-serial, python3-fosdemosc
+Description: Fosdem Mixer Control CLI
+ Command-line interface for controlling the audio mixers used at FOSDEM
