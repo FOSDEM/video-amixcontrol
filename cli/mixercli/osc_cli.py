@@ -73,7 +73,8 @@ def cli(ctx: click.Context, device: click.File):
 
     try:
         global osc
-        osc = OSCController(device.name)
+        if not 'osc' in globals():
+            osc = OSCController(device.name)
     except OSError as e:
         click.echo('Cannot connect to device: %s' % str(e), err=True)
         sys.exit(e.errno)
