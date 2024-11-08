@@ -10,7 +10,7 @@ def main():
     config = get_config()
 
     server_conf = uvicorn.Config("mixerapi.fosdemapi:app", host=config['host']['listen'], port=config['host']['port'])
-    server = uvicorn.server(server_conf)
+    server = uvicorn.Server(server_conf)
     server.run()
 
 
