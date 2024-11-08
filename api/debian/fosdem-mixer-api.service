@@ -1,0 +1,19 @@
+[Unit]
+Description=FOSDEM Mixer API
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/etc/mixerapi.conf
+
+
+[Service]
+User=root
+Group=root
+Type=simple
+ExecStart=/usr/bin/mixerapi
+ProtectSystem=yes
+ProtectHome=yes
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

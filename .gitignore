@@ -4,4 +4,10 @@
 *.changes
 *.deb
 *.tar.xz
+*.egg-info
+
+__pycache__/
+*.pyc
+
+build/
 */debian/changelog
