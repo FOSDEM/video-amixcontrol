@@ -18,14 +18,16 @@ class SLIPClient:
         encoded = self.END
         encoded += content.dgram.replace(self.ESC, self.ESC + self.ESC_ESC).replace(self.END, self.ESC + self.ESC_END)
         encoded += self.END
-        self.ser.write(encoded)
+        sentlen = self.ser.write(encoded)
+        if sentlen != len(encoded):
+            raise serial.SerialTimeoutException('Cannot write to serial port')
 
     def receive(self):
         buffer = b''
         while True:
             c = self.ser.read(1)
-            if c is None:
-                return None
+            if c is None or not len(c):
+                raise serial.SerialTimeoutException('Cannot read from serial port')
 
             if c == self.END:
                 if len(buffer):
@@ -34,8 +36,8 @@ class SLIPClient:
 
             if c == self.ESC:
                 c = self.ser.read(1)
-                if c is None:
-                    return None
+                if c is None or not len(c):
+                    raise serial.SerialTimeoutException('Packet ended too early')
                 if c == self.ESC_END:
                     buffer += self.END
                 elif c == self.ESC_ESC:

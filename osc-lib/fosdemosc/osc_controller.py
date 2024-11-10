@@ -8,6 +8,9 @@ Channel = int
 Bus = int
 Level = float
 
+SERIAL_READ_TIMEOUT: float | None = 1
+SERIAL_WRITE_TIMEOUT: float | None = 1
+
 
 class OSCController:
     inputs = ['IN1', 'IN2', 'IN3', 'PC', 'USB1', 'USB2']
@@ -17,9 +20,9 @@ class OSCController:
     def device(self) -> str:
         return self._device
 
-    def __init__(self, device, baud=1152000):
+    def __init__(self, device, baud=1152000, read_timeout=SERIAL_READ_TIMEOUT, write_timeout=SERIAL_WRITE_TIMEOUT):
         self._device = device
-        self.client = SLIPClient(device, baud)
+        self.client = SLIPClient(device, baud, timeout=read_timeout, write_timeout=write_timeout)
 
     def get_matrix(self) -> List[List[float]]:
         return [[self.get_gain(ch, bus) for bus in range(0, 6)] for ch in range(0, 6)]
