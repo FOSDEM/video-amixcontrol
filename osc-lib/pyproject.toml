@@ -7,7 +7,7 @@ dynamic = ["version"]
 
 dependencies = [
     "pyserial",
-    "pythonosc",
+    "python-osc",
 ]
 
 [build-system]
