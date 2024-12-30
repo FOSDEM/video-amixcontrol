@@ -35,27 +35,6 @@ class AliasedGroup(click.Group):
         _, cmd, args = super().resolve_command(ctx, args)
         return cmd.name, cmd, args
 
-
-def autocomplete_inputs(ctx, param, input: str):
-    return [x for x in osc.inputs if x.lower().startswith(input.lower())]
-
-
-def autocomplete_outputs(ctx, param, input: str):
-    return [x for x in osc.outputs if x.lower().startswith(input.lower())]
-
-
-def autocomplete_presets(ctx, param, input: str):
-    return [x for x in presets.keys() if x.lower().startswith(input.lower())]
-
-
-def input_choices():
-    return [*OSCController.inputs, *[str(x) for x in range(len(OSCController.inputs))]]
-
-
-def output_choices():
-    return [*OSCController.outputs, *[str(x) for x in range(len(OSCController.outputs))]]
-
-
 def preset_choices():
     return [x for x in presets.keys()]
 
@@ -76,7 +55,7 @@ def cli(ctx: click.Context, device: click.File):
         if not 'osc' in globals():
             osc = OSCController(device.name)
     except OSError as e:
-        click.echo('Cannot connect to device: %s' % str(e), err=True)
+        click.echo(f'Cannot connect to device: {e}', err=True)
         sys.exit(e.errno)
 
     if ctx.invoked_subcommand is None:
@@ -141,31 +120,31 @@ def info():
 
 
 @cli.command(help='Get the gain for a specified channel')
-@click.argument('channel', type=click.Choice(input_choices()))
-@click.argument('bus', type=click.Choice(output_choices()))
+@click.argument('channel')
+@click.argument('bus')
 def get_gain(channel: int | str, bus: int | str):
     try:
         channel = helpers.parse_channel(osc, channel)
         bus = helpers.parse_bus(osc, bus)
 
         click.echo(osc.get_gain(channel, bus))
-    except ValueError:
-        click.echo('Invalid input', err=True)
+    except ValueError as e:
+        click.echo(f'Invalid input: {e}', err=True)
 
 
 @cli.command(help='Set the gain for a specified channel')
-@click.argument('channel', type=click.Choice(input_choices()))
-@click.argument('bus', type=click.Choice(output_choices()))
+@click.argument('channel')
+@click.argument('bus')
 @click.argument('level', type=float)
-def set_gain(channel, bus, level):
+def set_gain(channel: int | str, bus : int | str, level: float | str):
     try:
         channel = helpers.parse_channel(osc, channel)
         bus = helpers.parse_bus(osc, bus)
         level = helpers.parse_level(osc, level)
 
         osc.set_gain(channel, bus, level)
-    except ValueError:
-        click.echo('Invalid input', err=True)
+    except ValueError as e:
+        click.echo(f'Invalid input: {e}', err=True)
 
 
 @cli.command(help='Apply preset')
@@ -175,8 +154,8 @@ def preset(preset: str):
     if preset not in presets:
         click.echo('Preset not found', err=True)
     else:
-        for i in range(0, 6):
-            for j in range(0, 6):
+        for i in range(0, len(osc.inputs)):
+            for j in range(0, len(osc.outputs)):
                 osc.set_gain(i, j, presets[preset][i][j])
 
 
