@@ -1,0 +1,6 @@
+[host]
+listen="0.0.0.0"
+port=6969
+
+[conn]
+device="/dev/tty_fosdem_audio_ctl"

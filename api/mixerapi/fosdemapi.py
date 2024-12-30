@@ -2,14 +2,17 @@
 
 import os
 import sys
-from typing import List
+import socket
 
 from fastapi import FastAPI
 
 from fosdemosc import OSCController
 from fosdemosc import helpers
 
+from typing import List
+
 from mixerapi.config import get_config
+
 
 config = get_config()
 
@@ -19,6 +22,13 @@ osc = OSCController(config['conn']['device'])
 @app.get("/")
 async def root() -> List[List[float]]:
     return osc.get_matrix()
+
+@app.get("/info")
+async def info() -> dict[str, str]:
+    return {
+            'host': socket.gethostname(),
+            'device': osc.device,
+    }
 
 
 @app.get("/channels")
