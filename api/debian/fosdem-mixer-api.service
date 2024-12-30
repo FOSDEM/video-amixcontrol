@@ -4,7 +4,6 @@ After=network-online.target
 Wants=network-online.target
 ConditionPathExists=/etc/mixerapi.conf
 
-
 [Service]
 User=root
 Group=root
@@ -14,6 +13,7 @@ ProtectSystem=yes
 ProtectHome=yes
 NoNewPrivileges=yes
 PrivateTmp=yes
+Restart=always
 
 [Install]
 WantedBy=multi-user.target
