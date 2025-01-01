@@ -22,7 +22,7 @@ class OSCController:
     def __get_chbus_name(self, specifier: str, num: int) -> str:
         message = OscMessageBuilder(f"/{specifier}/{num}/config/name")
         self.client.send(message.build())
-        response = self.client.receive()
+        response = self.client.receive_message()
         return response.params[0]
 
     def __get_channel_name(self, num: int) -> str:
@@ -56,7 +56,7 @@ class OSCController:
         message = OscMessageBuilder(f"/ch/{channel}/mix/{bus}/level")
         self.client.send(message.build())
 
-        response = self.client.receive()
+        response = self.client.receive_message()
         level = response.params[0]
 
         return level

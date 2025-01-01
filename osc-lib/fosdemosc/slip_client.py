@@ -22,7 +22,7 @@ class SLIPClient:
         if sentlen != len(encoded):
             raise serial.SerialTimeoutException('Cannot write to serial port')
 
-    def receive(self):
+    def __receive(self):
         buffer = b''
         while True:
             c = self.ser.read(1)
@@ -44,5 +44,10 @@ class SLIPClient:
                     buffer += self.ESC
             else:
                 buffer += c
+        return buffer
 
-        return OscMessage(buffer)
+    def receive_message(self):
+        return OscMessage(self.__receive())
+
+    def receive_bundle(self):
+        return OscBundle(self.__receive())
