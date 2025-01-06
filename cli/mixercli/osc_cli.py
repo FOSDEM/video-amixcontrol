@@ -86,6 +86,13 @@ def matrix():
 
     click.echo(tabulate.tabulate(formatted, headers=head, floatfmt=".2f", tablefmt='simple_grid'))
 
+@cli.command(help='Show input/output aaudio levels')
+def vu():
+    head = ['#', 'rms', 'peak', 'smooth']
+    channel_data = [[ch, levels.rms, levels.peak, levels.smooth] for ch, levels in osc.get_channel_vu_meters().items()]
+    bus_data = [[bus, levels.rms, levels.peak, levels.smooth] for bus, levels in osc.get_bus_vu_meters().items()]
+    click.echo(tabulate.tabulate(channel_data, headers=head, floatfmt=".2f", tablefmt='simple_grid'))
+    click.echo(tabulate.tabulate(bus_data, headers=head, floatfmt=".2f", tablefmt='simple_grid'))
 
 @cli.command(help='List channel names')
 def channels():
