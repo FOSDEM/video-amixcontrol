@@ -40,10 +40,13 @@ def preset_choices():
 
 
 @click.command(invoke_without_command=True, cls=AliasedGroup)
+@click.option('--udp/--serial', '-u/-s', default=True, help='Choose whether to use UDP or serial')
+@click.option('--host', '-h', type=str, default='127.0.0.1', help='Host to use for UDP')
+@click.option('--port', '-p', type=int, default='10024', help='Port to use for UDP')
 @click.option('--device', '-d', type=click.File('wb'), default='/dev/tty_fosdem_audio_ctl',
               help='Override the serial port on which the mixer is attached')
 @click.pass_context
-def cli(ctx: click.Context, device: click.File):
+def cli(ctx: click.Context, udp: bool, host: str, port: int, device: click.File):
     prompt_kwargs = {
         'message': 'mixer@%s> ' % socket.gethostname(),
         'color_depth': ColorDepth.MONOCHROME,
@@ -53,7 +56,11 @@ def cli(ctx: click.Context, device: click.File):
     try:
         global osc
         if not 'osc' in globals():
-            osc = OSCController(device.name)
+            if udp:
+                osc = OSCController(host, port, mode='udp')
+            else:  # serial
+                osc = OSCController(device.name)
+
     except OSError as e:
         click.echo(f'Cannot connect to device: {e}', err=True)
         sys.exit(e.errno)
