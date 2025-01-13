@@ -1,0 +1,18 @@
+[Unit]
+Description=FOSDEM OSC Multiplexing Proxy
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=root
+Group=root
+Type=simple
+ExecStart=/usr/bin/oscproxy
+ProtectSystem=yes
+ProtectHome=yes
+NoNewPrivileges=yes
+PrivateTmp=yes
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
