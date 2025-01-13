@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import os
 import os.path
 import time
 from typing import Dict, Any, Union
@@ -9,6 +10,7 @@ import logging
 import socket
 import multiprocessing
 from queue import SimpleQueue
+import select
 
 from pythonosc.osc_bundle import OscBundle
 from pythonosc.osc_message import OscMessage
@@ -55,23 +57,22 @@ def run_serial(requests, responses, device):
                 continue
 
 
-        if not requests.empty():
-            msg = requests.get()
-            log.info(f"Sending queued message: {msg}")
-            slip_client.send(msg.data)
+        msg = requests.get()
+        log.debug(f"Sending queued message: {msg}")
+        slip_client.send(msg.data)
 
         #  while True:
-            try:
-                response = slip_client.receive_obj()
-                log.debug(f"Received: {response}")
+        try:
+            response = slip_client.receive_obj()
+            log.debug(f"Received: {response}")
 
-                responses.put(DataItem(host=msg.host, data=response))
-            except Exception as e:
-                slip_client = None
-                log.error(e)
-                log.info("Restarting serial connection, requeueing message")
-                requests.put(msg)
-                continue
+            responses.put(DataItem(host=msg.host, data=response))
+        except Exception as e:
+            slip_client = None
+            log.error(e)
+            log.info("Restarting serial connection, requeueing message")
+            requests.put(msg)
+            continue
 
         # No messages in queue, we can use it to push something to all clients if we want
         pass
@@ -80,10 +81,9 @@ def run_udp_sender(requests, responses):
     log = logging.getLogger('UDPS')
 
     while True:
-        if not responses.empty():
-            msg = responses.get()
-            log.info(f"Sending queued message to {msg.host}")
-            msg.host.send(msg.data)
+        msg = responses.get()
+        log.debug(f"Sending queued message to {msg.host}")
+        msg.host.send(msg.data)
 
 def run_udp_listener(requests, responses, bind_to, port=10024):
     udp_client: dict[Any, UdpClient] = dict()
@@ -93,11 +93,18 @@ def run_udp_listener(requests, responses, bind_to, port=10024):
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((bind_to, port))
-    sock.settimeout(3)
+    sock.setblocking(False)
+
+
     while True:
+        waiting, _, _ = select.select([sock], [], [])
+
+        if not sock in waiting:
+            continue
+
         try:
             data, addr = sock.recvfrom(1024)
-            log.info(f"Received message from {addr}")
+            log.debug(f"Received message from {addr}")
         except TimeoutError:
             # No commands received for 3 seconds, run cleanup instead
             for addr in list(udp_client.keys()):
@@ -140,6 +147,13 @@ def main():
     udp_listen_process.start()
     udp_send_process = multiprocessing.Process(target=run_udp_sender, args=(requests, responses,))
     udp_send_process.start()
+
+    log = logging.getLogger('CTRL')
+
+    log.info(f'Controller PID {os.getpid()}')
+    log.info(f'UART PID {uart_process.pid}')
+    log.info(f'Listener PID {udp_listen_process.pid}')
+    log.info(f'Sender PID {udp_send_process.pid}')
 
     #run_serial(args.uart)
 
