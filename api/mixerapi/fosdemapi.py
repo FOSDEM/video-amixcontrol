@@ -19,30 +19,19 @@ from typing import List, Any
 from mixerapi.config import get_config
 
 from . import levels
+from .helpers import connect_osc
 
 config = get_config()
 
 app = FastAPI()
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("mixerapi")
 
-osc: OSCController
-
-def connect_osc():
-    global osc
-    logger.info(f"Connecting to serial {config['conn']}")
-    if 'device' in config['conn'] and config['conn']['device']:
-        osc = OSCController(config['conn']['device'])
-        logger.info(f"Created serial connection to {config['conn']['device']}")
-    else:
-        osc = OSCController(config['conn']['host'], config['conn']['port'], mode='udp')
-        logger.info(f"Connected to UDP {config['conn']['host']}:{config['conn']['port']}")
-
-connect_osc()
+osc = connect_osc(config)
 
 @app.on_event("startup")
 async def on_startup():
-    asyncio.create_task(levels.poll_levels(osc, config))
+    asyncio.create_task(levels.poll_levels(config))
     asyncio.create_task(levels.push_influxdb(config))
     logger.info("Started background tasks")
 
