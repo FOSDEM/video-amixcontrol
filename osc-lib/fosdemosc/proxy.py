@@ -34,8 +34,14 @@ class DataItem:
     host: UdpClient
     data: OscMessage | OscBundle
 
-#requests: SimpleQueue[DataItem] = SimpleQueue()
-#responses: SimpleQueue[DataItem] = SimpleQueue()
+def dictify(obj: OscMessage | OscBundle | None):
+    if obj is None:
+        return None
+    elif isinstance(obj, OscBundle):
+        return {x.address: x.params[0] if len(x.params) else None for x in obj}
+    else:
+        return {obj.address: obj.params[0] if len(obj.params) else None}
+
 
 def run_serial(requests, responses, device):
     log = logging.getLogger('SLIP')
@@ -56,25 +62,24 @@ def run_serial(requests, responses, device):
                 log.info("Restarting serial connection")
                 continue
 
-        #  while True:
         try:
             msg = requests.get()
-            log.debug(f"Sending queued message: {msg}")
+            log.debug(f"Sending queued message: {dictify(msg.data)}")
             slip_client.send(msg.data)
 
             response = slip_client.receive_obj()
-            log.debug(f"Received: {response}")
+            log.debug(f"Received response for {msg.host.addr}: {dictify(response)}")
 
             responses.put(DataItem(host=msg.host, data=response))
-        except serial.SerialTimeoutException:
-            log.debug(f"Command without a response: {msg}")
-            continue  # commands don't return a result
+        except serial.SerialTimeoutException:  # commands don't return a result
+            log.error(f"BUGBUG: Command from {msg.host.addr} without a response: {dictify(msg.data)}")
+            log.error(f"Either mixer firmware is too old, or it is dead")
+            slip_client.ser.reset_input_buffer()
+            slip_client.ser.reset_output_buffer()
         except Exception as e:
             slip_client = None
-            log.error(e)
-            log.info("Restarting serial connection, requeueing message")
+            log.warn("Restarting serial connection, requeueing message")
             requests.put(msg)
-            continue
 
         # No messages in queue, we can use it to push something to all clients if we want
         pass
@@ -84,12 +89,10 @@ def run_udp_sender(requests, responses):
 
     while True:
         msg = responses.get()
-        log.debug(f"Sending queued message to {msg.host}")
+        log.debug(f"Sending queued message {dictify(msg.data)} to {msg.host.addr}")
         msg.host.send(msg.data)
 
 def run_udp_listener(requests, responses, bind_to, port=10024):
-    udp_client: dict[Any, UdpClient] = dict()
-
     log = logging.getLogger('UDPL')
     log.info(f"Running proxy on UDP {bind_to}:{port}")
 
@@ -109,22 +112,12 @@ def run_udp_listener(requests, responses, bind_to, port=10024):
             log.debug(f"Received message from {addr}")
         except TimeoutError:
             # No commands received for 3 seconds, run cleanup instead
-            for addr in list(udp_client.keys()):
-                if udp_client[addr].last < time.time() - 10:
-                    log.info(f'Client {addr} disconnected')
-                    del udp_client[addr]
             continue
-
-        if addr not in udp_client:
-            log.info(f"New client: {addr}")
-            udp_client[addr] = UdpClient(sock, addr)
-        else:
-            udp_client[addr].last = time.time()
 
         osc_data = parse_osc_bytes(data)
 
-        requests.put(DataItem(host=udp_client[addr], data=osc_data))
-        log.debug(f"{addr}: {osc_data}")
+        requests.put(DataItem(host=UdpClient(sock, addr), data=osc_data))
+        log.debug(f"queued request from {addr}: {dictify(osc_data)}")
 
 def main():
     import argparse
@@ -157,9 +150,6 @@ def main():
     log.info(f'Listener PID {udp_listen_process.pid}')
     log.info(f'Sender PID {udp_send_process.pid}')
 
-    #run_serial(args.uart)
-
-    #uart_thread.join()
     uart_process.join()
 
 

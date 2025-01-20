@@ -6,5 +6,5 @@ from .helpers import parse_osc_bytes
 
 
 class ParsingUDPClient(UDPClient):
-    def receive_obj(self, timeout=0.5) -> OscBundle | OscMessage:
-        return parse_osc_bytes(self.receive(timeout))
+    def receive_obj(self, *args, **kwargs) -> OscBundle | OscMessage:
+        return parse_osc_bytes(self.receive(*args, **kwargs))

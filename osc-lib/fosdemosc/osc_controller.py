@@ -30,30 +30,29 @@ class OSCController:
     inputs: List[str]
     outputs: List[str]
 
-    def __get_info(self) -> Mapping[str,str]:
-        message = OscMessageBuilder(f"/info")
+    def __send(self, address: str, *args):
+        message = OscMessageBuilder(address)
+        for arg in args:
+            message.add_arg(arg)
+
         self.client.send(message.build())
 
-        response = self.client.receive_obj()
+        return self.client.receive_obj()
+
+    def __get_info(self) -> Mapping[str,str]:
+        response = self.__send("/info")
         return {x.address: x.params[0] for x in response}
 
 
     def __get_chbus_name(self, specifier: str, num: int) -> str:
-        message = OscMessageBuilder(f"/{specifier}/{num}/config/name")
-        self.client.send(message.build())
-        response = self.client.receive_obj()
-        return str(response.params[0])
+        return self.__info[f"/{specifier}/{num}/config/name"]
 
     def __get_chbus_multiplier(self, specifier: str, num: int) -> float:
-        message = OscMessageBuilder(f"/{specifier}/{num}/multiplier")
-        self.client.send(message.build())
-        response = self.client.receive_obj()
+        response = self.__send(f"/{specifier}/{num}/multiplier")
         return float(response.params[0])
 
     def __set_chbus_multiplier(self, specifier: str, num: int, multiplier: float):
-        message = OscMessageBuilder(f"/{specifier}/{num}/multiplier")
-        message.add_arg(float(multiplier))
-        self.client.send(message.build())
+        self.__send("/{specifier}/{num}/multiplier", float(multiplier))
 
     def __get_inputs(self) -> List[str]:
         return [self.__get_chbus_name('ch', x) for x in range(int(self.__info["/info/channels"]))]
@@ -115,54 +114,33 @@ class OSCController:
         return {ch: self.get_channel_multiplier(i) for i, ch in enumerate(self.inputs)}
 
     def get_gain(self, channel: Channel, bus: Bus) -> Level:
-        message = OscMessageBuilder(f"/ch/{channel}/mix/{bus}/level")
-        self.client.send(message.build())
-
-        response = self.client.receive_obj()
+        response = self.__send(f"/ch/{channel}/mix/{bus}/level")
         return Level(response.params[0])
 
-
     def get_raw_gain(self, channel: Channel, bus: Bus) -> Level:
-        message = OscMessageBuilder(f"/ch/{channel}/mix/{bus}/raw")
-        self.client.send(message.build())
-
-        response = self.client.receive_obj()
+        response = self.__send(f"/ch/{channel}/mix/{bus}/raw")
         return Level(response.params[0])
 
     def set_gain(self, channel: Channel, bus: Bus, level: Level) -> None:
-        message = OscMessageBuilder(f"/ch/{channel}/mix/{bus}/level")
-        message.add_arg(Level(level))
-        self.client.send(message.build())
+        self.__send(f"/ch/{channel}/mix/{bus}/level", Level(level))
 
     def get_muted(self, channel: Channel, bus: Bus) -> bool:
-        message = OscMessageBuilder(f"/ch/{channel}/mix/{bus}/muted")
-        self.client.send(message.build())
-
-        response = self.client.receive_obj()
+        response = self.__send(f"/ch/{channel}/mix/{bus}/muted")
         return bool(response.params[0])
 
     def set_muted(self, channel: Channel, bus: Bus, muted: bool) -> None:
-        message = OscMessageBuilder(f"/ch/{channel}/mix/{bus}/muted")
-        message.add_arg(bool(muted))
-        self.client.send(message.build())
+        self.__send(f"/ch/{channel}/mix/{bus}/muted", bool(muted))
 
     def get_channel_levels(self, channel: Channel) -> VUMeter:
-        message = OscMessageBuilder(f"/ch/{channel}/levels")
-        self.client.send(message.build())
-        response = self.client.receive_obj()
+        response = self.__send(f"/ch/{channel}/levels")
         return VUMeter(**{x.address.rsplit("/", 1)[-1]: padinf(x.params[0]) for x in response})
 
     def get_bus_levels(self, bus: Bus) -> VUMeter:
-        message = OscMessageBuilder(f"/bus/{bus}/levels")
-        self.client.send(message.build())
-        response = self.client.receive_obj()
+        response = self.__send(f"/bus/{bus}/levels")
         return VUMeter(**{x.address.rsplit("/", 1)[-1]: padinf(x.params[0]) for x in response})
 
     def get_state(self):
-        message = OscMessageBuilder(f"/state")
-        self.client.send(message.build())
-
-        response = self.client.receive_obj()
+        response = self.__send("/state")
 
         return {x.address: x.params[0] for x in response}
 
@@ -170,8 +148,7 @@ class OSCController:
         return {ch: {bus: self.get_muted(i, j) for j, bus in enumerate(self.outputs)} for i, ch in enumerate(self.inputs)}
 
     def reset(self):
-        message = OscMessageBuilder(f"/factoryreset")
-        self.client.send(message.build())
+        self.__send("/factoryreset")
 
 
 def parse_bus(osc: OSCController, bus: str | int) -> Bus:
