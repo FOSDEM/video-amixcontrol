@@ -50,7 +50,7 @@ class OSCController:
         response = self.client.receive_obj()
         return float(response.params[0])
 
-    def __set_chbus_multiplier(elf, specifier: str, num: int, multiplier: float):
+    def __set_chbus_multiplier(self, specifier: str, num: int, multiplier: float):
         message = OscMessageBuilder(f"/{specifier}/{num}/multiplier")
         message.add_arg(float(multiplier))
         self.client.send(message.build())
@@ -61,12 +61,18 @@ class OSCController:
     def __get_outputs(self) -> List[str]:
         return [self.__get_chbus_name('bus', x) for x in range(int(self.__info["/info/buses"]))]
 
-    # TODO: set_(bus|channel)_multpilier
-    def get_bus_multiplier(self, bus: Bus) -> Level:
+    def get_bus_multiplier(self, bus: Bus) -> float:
         return self.__get_chbus_multiplier('bus', bus)
 
-    def get_channel_multiplier(self, channel: Channel) -> Level:
+    def set_bus_multiplier(self, bus: Bus, multiplier: float):
+        self.__set_chbus_multiplier('bus', bus, multiplier)
+
+    def get_channel_multiplier(self, channel: Channel) -> float:
         return self.__get_chbus_multiplier('ch', channel)
+
+    def set_channel_multiplier(self, channel: Channel, multiplier: float):
+        self.__set_chbus_multiplier('ch', channel, multiplier)
+
 
     @property
     def device(self) -> str | None:
@@ -93,6 +99,8 @@ class OSCController:
     def get_matrix(self) -> List[List[float]]:
         return [[self.get_gain(ch, bus) for bus in range(len(self.outputs))] for ch in range(len(self.inputs))]
 
+    def mute_matrix(self) -> List[List[float]]:
+        return [[self.get_muted(ch, bus) for bus in range(len(self.outputs))] for ch in range(len(self.inputs))]
 
     def get_bus_vu_meters(self) -> Mapping[Bus, List[VUMeter]]:
         return {bus: self.get_bus_levels(i) for i, bus in enumerate(self.outputs)}
@@ -160,6 +168,10 @@ class OSCController:
 
     def get_mutes(self) -> dict[str, dict[str, bool]]:
         return {ch: {bus: self.get_muted(i, j) for j, bus in enumerate(self.outputs)} for i, ch in enumerate(self.inputs)}
+
+    def reset(self):
+        message = OscMessageBuilder(f"/factoryreset")
+        self.client.send(message.build())
 
 
 def parse_bus(osc: OSCController, bus: str | int) -> Bus:

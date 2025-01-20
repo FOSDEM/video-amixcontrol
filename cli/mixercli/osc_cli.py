@@ -11,7 +11,6 @@ from prompt_toolkit.output import ColorDepth
 from prompt_toolkit.shortcuts import CompleteStyle
 
 from fosdemosc import *
-from fosdemosc import helpers
 from fosdemosc import presets
 
 osc: OSCController
@@ -84,16 +83,29 @@ def cli(ctx: click.Context, udp: bool, host: str, port: int, device: click.File)
 
 @cli.command(help='Show all gains in human-readable format')
 def matrix():
-    head = ['#'] + osc.outputs
+    head = ['O \\ I'] + osc.inputs
 
     formatted = [
-        [osc.inputs[i], *line]
-        for i, line in enumerate(osc.get_matrix())
+        [osc.outputs[i], *line]
+        for i, line in enumerate([list(x) for x in zip(*osc.get_matrix())])  # transpose the matrix
     ]
 
     click.echo(tabulate.tabulate(formatted, headers=head, floatfmt=".2f", tablefmt='simple_grid'))
 
-@cli.command(help='Show input/output aaudio levels')
+
+
+@cli.command(help='Show muted channels')
+def mutes():
+    head = ['O \\ I'] + osc.inputs
+
+    formatted = [
+        [osc.outputs[i], *line]
+        for i, line in enumerate([list(x) for x in zip(*osc.mute_matrix())])  # transpose the matrix
+    ]
+
+    click.echo(tabulate.tabulate(formatted, headers=head, floatfmt=".2f", tablefmt='simple_grid'))
+
+@cli.command(help='Show input/output audio levels')
 def vu():
     head = ['#', 'rms', 'peak', 'smooth']
     channel_data = [[ch, levels.rms, levels.peak, levels.smooth] for ch, levels in osc.get_channel_vu_meters().items()]
@@ -133,13 +145,55 @@ def info():
     click.echo('-' * 80)
 
 
+# get input multiplier
+@cli.command()
+@click.argument('channel')
+def img(channel: int | str):
+    try:
+        channel = parse_channel(osc, channel)
+        click.echo(osc.get_channel_multiplier(channel))
+    except ValueError as e:
+        click.echo(f'Invalid input: {e}', err=True)
+
+# set input multiplier
+@cli.command()
+@click.argument('channel')
+@click.argument('multiplier')
+def ims(channel: int | str, multiplier: float | str):
+    try:
+        channel = parse_channel(osc, channel)
+        osc.set_channel_multiplier(channel, float(multiplier))
+    except ValueError as e:
+        click.echo(f'Invalid input: {e}', err=True)
+
+# get output multiplier
+@cli.command()
+@click.argument('bus')
+def omg(bus: int | str):
+    try:
+        bus = parse_bus(osc, bus)
+        click.echo(osc.get_bus_multiplier(bus))
+    except ValueError as e:
+        click.echo(f'Invalid input: {e}', err=True)
+
+# set output multiplier
+@cli.command()
+@click.argument('bus')
+@click.argument('multiplier')
+def oms(bus: int | str, multiplier: float | str):
+    try:
+        bus = parse_bus(osc, bus)
+        osc.set_bus_multiplier(bus, float(multiplier))
+    except ValueError as e:
+        click.echo(f'Invalid input: {e}', err=True)
+
 @cli.command(help='Get the gain for a specified channel')
 @click.argument('channel')
 @click.argument('bus')
 def get_gain(channel: int | str, bus: int | str):
     try:
-        channel = helpers.parse_channel(osc, channel)
-        bus = helpers.parse_bus(osc, bus)
+        channel = parse_channel(osc, channel)
+        bus = parse_bus(osc, bus)
 
         click.echo(osc.get_gain(channel, bus))
     except ValueError as e:
@@ -152,9 +206,9 @@ def get_gain(channel: int | str, bus: int | str):
 @click.argument('level', type=float)
 def set_gain(channel: int | str, bus : int | str, level: float | str):
     try:
-        channel = helpers.parse_channel(osc, channel)
-        bus = helpers.parse_bus(osc, bus)
-        level = helpers.parse_level(osc, level)
+        channel = parse_channel(osc, channel)
+        bus = parse_bus(osc, bus)
+        level = parse_level(osc, level)
 
         osc.set_gain(channel, bus, level)
     except ValueError as e:
@@ -177,6 +231,10 @@ def preset(preset: str):
 def cls():
     click.clear()
 
+@cli.command(hidden=True)
+def reset():
+    click.echo('Resetting mixer to default')
+    osc.reset()
 
 @cli.command('help')
 @click.pass_context

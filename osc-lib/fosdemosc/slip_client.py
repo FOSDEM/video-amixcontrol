@@ -16,6 +16,7 @@ class SLIPClient:
     def __init__(self, device, baud=9600, **kwargs):
         self.ser = serial.Serial(device, baudrate=baud, **kwargs)
         self.ser.reset_input_buffer()
+        self.ser.reset_output_buffer()
 
     def send(self, content: Union[OscMessage, OscBundle]) -> None:
         encoded = self.END

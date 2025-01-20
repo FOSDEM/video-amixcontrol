@@ -15,8 +15,8 @@ import select
 from pythonosc.osc_bundle import OscBundle
 from pythonosc.osc_message import OscMessage
 
+import serial
 from .helpers import parse_osc_bytes
-
 from .slip_client import SLIPClient
 
 class UdpClient:
@@ -56,17 +56,19 @@ def run_serial(requests, responses, device):
                 log.info("Restarting serial connection")
                 continue
 
-
-        msg = requests.get()
-        log.debug(f"Sending queued message: {msg}")
-        slip_client.send(msg.data)
-
         #  while True:
         try:
+            msg = requests.get()
+            log.debug(f"Sending queued message: {msg}")
+            slip_client.send(msg.data)
+
             response = slip_client.receive_obj()
             log.debug(f"Received: {response}")
 
             responses.put(DataItem(host=msg.host, data=response))
+        except serial.SerialTimeoutException:
+            log.debug(f"Command without a response: {msg}")
+            continue  # commands don't return a result
         except Exception as e:
             slip_client = None
             log.error(e)
