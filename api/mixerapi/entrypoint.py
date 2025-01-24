@@ -13,17 +13,14 @@ def main():
     config = get_config()
 
 
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
 
-    server_conf = uvicorn.Config(
-            "mixerapi.fosdemapi:app",
+    uvicorn.run("mixerapi.fosdemapi:app",
             host=config['host']['listen'],
             port=config['host']['port'],
             proxy_headers=True,
             forwarded_allow_ips='*',
     )
-    server = uvicorn.Server(server_conf)
-    server.run()
 
 
 if __name__ == "__main__":

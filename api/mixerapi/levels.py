@@ -16,6 +16,13 @@ import logging
 
 logger = logging.getLogger("levels")
 
+async def setup(config):
+    asyncio.create_task(poll_levels(config))
+    asyncio.create_task(push_influxdb(config))
+
+async def stop():
+    pass
+
 def shanod(x):
     return {k: dataclasses.asdict(v) for k, v in x.items()}
 
@@ -26,7 +33,7 @@ def get_levels(osc: OSCController):
 
         return ({'input': shanod(ch), 'output': shanod(bus)})
     except:
-        logger.error("BUGBUG: Failed getting levels")
+        logger.error("Timeout getting info from mixer")
         return None
 
 web_event = asyncio.Event()
@@ -42,8 +49,8 @@ async def poll_levels(config):
     global web_levels, web_event
     global influxdb_levels, influxdb_event
 
-    int_web = config['levels']['interval_web']
-    int_influxdb = config['levels']['interval_influxdb']
+    int_web = config['poll']['levels_web']
+    int_influxdb = config['poll']['levels_influxdb']
 
     poll_base = math.gcd(int_web, int_influxdb)
     poll_count = math.lcm(int_web, int_influxdb)
@@ -69,6 +76,9 @@ async def web_get_levels():
     global web_levels, web_event
     await web_event.wait()
     web_event.clear()
+    return web_levels
+
+def get_web_cached_levels():
     return web_levels
 
 async def influxdb_get_levels():

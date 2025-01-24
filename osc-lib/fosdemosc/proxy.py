@@ -56,6 +56,7 @@ def run_serial(requests, responses, device):
             try:
                 slip_client = SLIPClient(device, baud=1152000, timeout=1, write_timeout=1)
                 log.info(f"Opened {device}")
+                time.sleep(0.5)
             except Exception as e:
                 slip_client = None
                 log.error(e)
@@ -74,8 +75,6 @@ def run_serial(requests, responses, device):
         except serial.SerialTimeoutException:  # commands don't return a result
             log.error(f"BUGBUG: Command from {msg.host.addr} without a response: {dictify(msg.data)}")
             log.error(f"Either mixer firmware is too old, or it is dead")
-            slip_client.ser.reset_input_buffer()
-            slip_client.ser.reset_output_buffer()
         except Exception as e:
             slip_client = None
             log.warn("Restarting serial connection, requeueing message")

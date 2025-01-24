@@ -2,6 +2,8 @@ from typing import List, Mapping
 from pythonosc.osc_message_builder import OscMessageBuilder
 
 from dataclasses import dataclass
+from collections import defaultdict
+import re
 
 from .slip_client import SLIPClient
 from .udp_client import ParsingUDPClient
@@ -17,6 +19,16 @@ def padinf(x: float) -> float:
     # Note: checking `math.isinf(x) and x < 0` should be faster
     return -60 if x == float('-inf') else x
 
+
+def groups(regex, val):
+    matches = regex.search(val)
+    return matches.groups()
+
+def groups_all(regex, vals):
+    for k, v in vals.items():
+        matches = regex.search(k)
+        if matches:
+            yield matches.groups(), k, v
 
 @dataclass
 class VUMeter:
@@ -52,7 +64,7 @@ class OSCController:
         return float(response.params[0])
 
     def __set_chbus_multiplier(self, specifier: str, num: int, multiplier: float):
-        self.__send("/{specifier}/{num}/multiplier", float(multiplier))
+        self.__send(f"/{specifier}/{num}/multiplier", float(multiplier))
 
     def __get_inputs(self) -> List[str]:
         return [self.__get_chbus_name('ch', x) for x in range(int(self.__info["/info/channels"]))]
@@ -98,8 +110,11 @@ class OSCController:
     def get_matrix(self) -> List[List[float]]:
         return [[self.get_gain(ch, bus) for bus in range(len(self.outputs))] for ch in range(len(self.inputs))]
 
-    def mute_matrix(self) -> List[List[float]]:
-        return [[self.get_muted(ch, bus) for bus in range(len(self.outputs))] for ch in range(len(self.inputs))]
+    def get_raw_matrix(self) -> List[List[float]]:
+        return [[self.get_raw_gain(ch, bus) for bus in range(len(self.outputs))] for ch in range(len(self.inputs))]
+
+    def mute_matrix(self) -> List[List[bool]]:
+        return [[bool(self.get_muted(ch, bus)) for bus in range(len(self.outputs))] for ch in range(len(self.inputs))]
 
     def get_bus_vu_meters(self) -> Mapping[Bus, List[VUMeter]]:
         return {bus: self.get_bus_levels(i) for i, bus in enumerate(self.outputs)}
@@ -140,9 +155,13 @@ class OSCController:
         return VUMeter(**{x.address.rsplit("/", 1)[-1]: padinf(x.params[0]) for x in response})
 
     def get_state(self):
-        response = self.__send("/state")
-
-        return {x.address: x.params[0] for x in response}
+        return {
+            'mutes': self.get_mutes(),
+            'multipliers': {
+                'input': self.get_channel_multipliers(),
+                'output': self.get_bus_multipliers(),
+            },
+        }
 
     def get_mutes(self) -> dict[str, dict[str, bool]]:
         return {ch: {bus: self.get_muted(i, j) for j, bus in enumerate(self.outputs)} for i, ch in enumerate(self.inputs)}

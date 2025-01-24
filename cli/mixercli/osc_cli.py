@@ -93,9 +93,32 @@ def matrix():
     click.echo(tabulate.tabulate(formatted, headers=head, floatfmt=".2f", tablefmt='simple_grid'))
 
 
+@cli.command(help='Mute channel->bus send')
+@click.argument('channel')
+@click.argument('bus')
+def mute(channel: int | str, bus : int | str):
+    try:
+        channel = parse_channel(osc, channel)
+        bus = parse_bus(osc, bus)
+
+        osc.set_muted(channel, bus, True)
+    except ValueError as e:
+        click.echo(f'Invalid input: {e}', err=True)
+
+@cli.command(help='Mute channel->bus send')
+@click.argument('channel')
+@click.argument('bus')
+def unmute(channel: int | str, bus : int | str):
+    try:
+        channel = parse_channel(osc, channel)
+        bus = parse_bus(osc, bus)
+
+        osc.set_muted(channel, bus, False)
+    except ValueError as e:
+        click.echo(f'Invalid input: {e}', err=True)
 
 @cli.command(help='Show muted channels')
-def mutes():
+def get_mutes():
     head = ['O \\ I'] + osc.inputs
 
     formatted = [
