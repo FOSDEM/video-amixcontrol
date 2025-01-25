@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-from contextlib import asynccontextmanager
-
 import os
 import sys
 import socket
@@ -27,17 +25,16 @@ from .helpers import connect_osc, strtobool
 
 config = get_config()
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    await levels.setup(config)
-    await state.setup(config)
-    yield
-
 app = FastAPI(lifespan=lifespan)
 
 logger = logging.getLogger("mixerapi")
 
 osc = connect_osc(config)
+
+@app.on_event('startup')
+async def on_startup():
+    await levels.setup(config)
+    await state.setup(config)
 
 @app.get("/")
 @app.get("/state")
