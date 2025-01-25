@@ -9,6 +9,6 @@ export PYBUILD_NAME=osc
 override_dh_systemd_enable:
 	dh_systemd_enable --name=oscproxy
 
-override_dh_installinit:
-	dh_installinit --name=oscproxy
+override_dh_installsystemd:
+	dh_installsystemd --name=oscproxy
 
