@@ -1,7 +1,8 @@
 [Unit]
 Description=FOSDEM Mixer API
-After=network-online.target
+After=network-online.target oscproxy.service
 Wants=network-online.target
+Requires=oscproxy.service
 ConditionPathExists=/etc/mixerapi.conf
 
 [Service]

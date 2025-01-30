@@ -1,8 +1,8 @@
 from fosdemosc import OSCController
 
-import asyncio
-import aiohttp
 import urllib.parse
+
+import requests
 
 import socket
 
@@ -10,47 +10,30 @@ import math
 import itertools
 import dataclasses
 
+import multiprocessing
+import time
+
 from . import helpers
 
 import logging
 
 logger = logging.getLogger("levels")
 
-async def setup(config):
-    asyncio.create_task(poll_levels(config))
-    asyncio.create_task(push_influxdb(config))
+def start(config, web_state, manager = multiprocessing.Manager()):
+    global influxdb_state
+    influxdb_state = helpers.StateEvent(manager.Event(), manager.dict())
 
-async def stop():
-    pass
+    poller_process = multiprocessing.Process(target=poll_levels, args=(config, web_state, influxdb_state,))
+    influx_process = multiprocessing.Process(target=push_influxdb, args=(config, influxdb_state,))
 
-def shanod(x):
-    return {k: dataclasses.asdict(v) for k, v in x.items()}
+    return (poller_process, influx_process)
 
-def get_levels(osc: OSCController):
-    try:
-        ch = osc.get_channel_vu_meters()
-        bus = osc.get_bus_vu_meters()
-
-        return ({'input': shanod(ch), 'output': shanod(bus)})
-    except:
-        logger.error("Timeout getting info from mixer")
-        return None
-
-web_event = asyncio.Event()
-influxdb_event = asyncio.Event()
-
-web_levels = None
-influxdb_levels = None
-
-async def poll_levels(config):
+def poll_levels(config, web_state, influx_state):
     osc = helpers.connect_osc(config)
     logger.info(f"Connected to {osc.device}")
 
-    global web_levels, web_event
-    global influxdb_levels, influxdb_event
-
-    int_web = config['poll']['levels_web']
-    int_influxdb = config['poll']['levels_influxdb']
+    int_web = config['levels']['interval_web']
+    int_influxdb = config['levels']['interval_influx']
 
     poll_base = math.gcd(int_web, int_influxdb)
     poll_count = math.lcm(int_web, int_influxdb)
@@ -60,50 +43,32 @@ async def poll_levels(config):
 
     # like `while True`, but counts the cycle, and keeps it from overflowing
     for i in itertools.cycle(range(poll_count)):
-        await asyncio.sleep(poll_base / 1000)
-        levels = get_levels(osc)
+        time.sleep(poll_base / 1000)
+        levels = helpers.get_all_levels(osc)
+
         if not levels:
             continue
 
-        if i % mult_web == 0 and not web_event.is_set():
-            web_levels = dict(levels)
-            web_event.set()
-        if i % mult_influxdb == 0 and not influxdb_event.is_set():
-            influxdb_levels = dict(levels)
-            influxdb_event.set()
+        if i % mult_web == 0 and not web_state.is_set():
+            web_state.set(lambda x: helpers.merge(x, levels))
 
-async def web_get_levels():
-    global web_levels, web_event
-    await web_event.wait()
-    web_event.clear()
-    return web_levels
+        if i % mult_influxdb == 0 and not influx_state.is_set():
+            influx_state.set(lambda x: helpers.merge(x, levels))
 
-def get_web_cached_levels():
-    return web_levels
-
-async def influxdb_get_levels():
-    global influxdb_levels, influxdb_event
-    await influxdb_event.wait()
-    influxdb_event.clear()
-    return influxdb_levels
-
-async def push_influxdb(config):
-    if not 'influxdb' in config:
+def push_influxdb(config, influxdb_state):
+    if not ('influx_host' and 'influx_db') in config['levels']:
         logger.info('no influx')
         return
-    if not ('host' in config['influxdb'] and 'db' in config['influxdb']):
-        logger.info('no host')
-        return
 
-    host = config['influxdb']['host']
-    db = config['influxdb']['db']
+    host = config['levels']['influx_host']
+    db = config['levels']['influx_db']
 
     url = urllib.parse.urlunsplit(('http', host, '/write', f'db={db}', ''))
 
     hostname = socket.gethostname()
 
     while True:
-        levels = await influxdb_get_levels()
+        levels = influxdb_state.get()
 
         data = '\n'.join(
                 [f'input_levels,box={hostname},ch={ch} rms={vu["rms"]},peak={vu["peak"]},smooth={vu["smooth"]}' 
@@ -111,5 +76,4 @@ async def push_influxdb(config):
                 [f'output_levels,box={hostname},bus={bus} rms={vu["rms"]},peak={vu["peak"]},smooth={vu["smooth"]}' 
                  for bus, vu in levels['output'].items()])
 
-        async with aiohttp.ClientSession() as session:
-            await session.post(url, data=data.encode())
+        requests.post(url, data=data.encode())

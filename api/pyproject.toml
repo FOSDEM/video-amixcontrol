@@ -13,7 +13,7 @@ dependencies = [
     "uvicorn",
     "fosdemosc",
     "websockets",
-    "aiohttp",
+    "requests",
 ]
 
 [project.scripts]

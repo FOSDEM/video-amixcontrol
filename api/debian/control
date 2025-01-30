@@ -12,7 +12,7 @@ Build-Depends:
  python3-uvicorn,
  python3-serial,
  python3-websockets,
- python3-aiohttp
+ python3-requests
 Testsuite: autopkgtest-pkg-pybuild
 Maintainer: Albert Stefanov <albert@kmail.bg>
 Standards-Version: 4.6.2
@@ -20,6 +20,6 @@ Standards-Version: 4.6.2
 Package: fosdem-mixer-api
 X-Python3-Version: >= 3.10
 Architecture: all
-Depends: ${python3:Depends}, ${misc:Depends}, python3-fastapi, python3-uvicorn, python3-serial, python3-fosdemosc, python3-websockets, python3-aiohttp
+Depends: ${python3:Depends}, ${misc:Depends}, python3-fastapi, python3-uvicorn, python3-serial, python3-fosdemosc, python3-websockets, python3-requests
 Description: Fosdem Mixer Control API
  REST API for controlling the audio mixers used at FOSDEM
