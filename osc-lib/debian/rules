@@ -5,3 +5,10 @@ export PYBUILD_NAME=osc
 
 %:
 	dh $@ --buildsystem=pybuild --with=python3
+
+override_dh_systemd_enable:
+	dh_systemd_enable --name=oscproxy
+
+override_dh_installsystemd:
+	dh_installsystemd --name=oscproxy
+

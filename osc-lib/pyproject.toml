@@ -14,5 +14,8 @@ dependencies = [
 requires = ["setuptools >= 61.0"]
 build-backend = "setuptools.build_meta"
 
+[project.scripts]
+oscproxy = "fosdemosc.proxy:main"
+
 [tool.setuptools.packages.find]
 include = ["fosdemosc", "fosdemosc.*"]

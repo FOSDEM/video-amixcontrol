@@ -1,15 +1,13 @@
 [Unit]
-Description=FOSDEM Mixer API
-After=network-online.target oscproxy.service
+Description=FOSDEM OSC Multiplexing Proxy
+After=network-online.target
 Wants=network-online.target
-Requires=oscproxy.service
-ConditionPathExists=/etc/mixerapi.conf
 
 [Service]
 User=root
 Group=root
 Type=simple
-ExecStart=/usr/bin/mixerapi
+ExecStart=/usr/bin/oscproxy
 ProtectSystem=yes
 ProtectHome=yes
 NoNewPrivileges=yes

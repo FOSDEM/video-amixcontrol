@@ -4,6 +4,8 @@ import serial
 from pythonosc.osc_bundle import OscBundle
 from pythonosc.osc_message import OscMessage
 
+from .helpers import parse_osc_bytes
+
 
 class SLIPClient:
     END = b'\xc0'
@@ -13,6 +15,8 @@ class SLIPClient:
 
     def __init__(self, device, baud=9600, **kwargs):
         self.ser = serial.Serial(device, baudrate=baud, **kwargs)
+        self.ser.reset_input_buffer()
+        self.ser.reset_output_buffer()
 
     def send(self, content: Union[OscMessage, OscBundle]) -> None:
         encoded = self.END
@@ -22,7 +26,7 @@ class SLIPClient:
         if sentlen != len(encoded):
             raise serial.SerialTimeoutException('Cannot write to serial port')
 
-    def __receive(self):
+    def receive(self) -> bytes:
         buffer = b''
         while True:
             c = self.ser.read(1)
@@ -46,8 +50,6 @@ class SLIPClient:
                 buffer += c
         return buffer
 
-    def receive_message(self):
-        return OscMessage(self.__receive())
-
-    def receive_bundle(self):
-        return OscBundle(self.__receive())
+    def receive_obj(self) -> OscBundle | OscMessage:
+        val = parse_osc_bytes(self.receive())
+        return val

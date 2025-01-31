@@ -10,8 +10,6 @@ def get_logger():
 @lru_cache
 def get_config(conffile_locations = ['./mixerapi.conf', os.path.expanduser('~/mixerapi.conf'), os.path.expanduser('~/.config/mixerapi.conf'), '/etc/mixerapi.conf']):
     conffile = next((x for x in conffile_locations if os.access(x, os.R_OK)), None) # get first existing file, or None
-
-    print(conffile)
     if conffile is None:
         raise FileNotFoundError('No config exists, locations checked: %s' % str.join(', ', [os.path.abspath(x) for x in conffile_locations]))
 
