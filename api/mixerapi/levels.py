@@ -35,11 +35,19 @@ def poll_levels(config, web_state, influx_state):
     int_web = config['levels']['interval_web']
     int_influxdb = config['levels']['interval_influx']
 
-    poll_base = math.gcd(int_web, int_influxdb)
-    poll_count = math.lcm(int_web, int_influxdb)
+    gcd = math.gcd(int_web, int_influxdb)
+    lcm = math.lcm(int_web, int_influxdb)
 
-    mult_web = poll_base / int_web
-    mult_influxdb = poll_base / int_influxdb
+    # interval between polling cycles
+    poll_base = gcd
+
+    # how often will they get in sync
+    poll_count = lcm // gcd
+
+    mult_web = int_web // gcd
+    mult_influxdb = int_influxdb // gcd
+
+    logger.info(f"Polling cycles: {poll_count}, each {poll_base} ms, web every {mult_web}, influxdb every {mult_influxdb}")
 
     # like `while True`, but counts the cycle, and keeps it from overflowing
     for i in itertools.cycle(range(poll_count)):
@@ -47,13 +55,22 @@ def poll_levels(config, web_state, influx_state):
         levels = helpers.get_all_levels(osc)
 
         if not levels:
+            logger.error('No levels from mixer')
             continue
 
-        if i % mult_web == 0 and not web_state.is_set():
-            web_state.set(lambda x: helpers.merge(x, levels))
+        if i % mult_web == 0:
+            logger.debug('polling web')
+            if web_state.is_set():
+                logger.debug('no web clients to update')
+            else:
+                web_state.set(lambda x: helpers.merge(x, levels))
 
-        if i % mult_influxdb == 0 and not influx_state.is_set():
-            influx_state.set(lambda x: helpers.merge(x, levels))
+        if i % mult_influxdb == 0:
+            logger.debug('polling influxdb')
+            if influx_state.is_set():
+                logger.warn('influxdb still waiting')
+            else:
+                influx_state.set(lambda x: helpers.merge(x, levels))
 
 def push_influxdb(config, influxdb_state):
     if not ('influx_host' and 'influx_db') in config['levels']:

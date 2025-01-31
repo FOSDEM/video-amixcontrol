@@ -27,7 +27,7 @@ def main():
 
     ch = logging.StreamHandler()
     ch.setFormatter(logging.Formatter('%(name)s :: %(levelname)s :: %(message)s'))
-    logging.basicConfig(level=logging.INFO, handlers=[ch])
+    logging.basicConfig(level=config['host']['loglevel'], handlers=[ch])
 
     log = logging.getLogger('CTRL')
 
