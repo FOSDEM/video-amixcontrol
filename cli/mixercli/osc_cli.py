@@ -238,6 +238,22 @@ def set_gain(channel: int | str, bus : int | str, level: float | str):
         click.echo(f'Invalid input: {e}', err=True)
 
 
+@cli.command(help='Set the gain for a specified channel')
+@click.argument('channel')
+@click.argument('gain', required=False, type=int)
+def adc_gain(channel: int | str, gain: int = None):
+    try:
+        channel = parse_channel(osc, channel)
+
+        if gain is None:
+            result = osc.get_adc_gain(channel)
+            click.echo(result)
+        else:
+            osc.set_adc_gain(channel, gain)
+    except ValueError as e:
+        click.echo(f'Invalid input: {e}', err=True)
+
+
 @cli.command(help='Apply preset')
 @click.argument('preset', type=click.Choice(preset_choices()))
 @click.help_option()

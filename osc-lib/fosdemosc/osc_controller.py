@@ -84,6 +84,15 @@ class OSCController:
     def set_channel_multiplier(self, channel: Channel, multiplier: float):
         self.__set_chbus_multiplier('ch', channel, multiplier)
 
+    def set_adc_gain(self, channel: Channel, gain: int):
+        if gain < 0 or gain > 42:
+            raise ValueError(f"gain must be between 0 and 42, got {gain}")
+        self.__send(f"/ch/{channel}/gain", float(gain))
+
+    def get_adc_gain(self, channel: Channel) -> int:
+        response = self.__send(f"/ch/{channel}/gain")
+        return int(response.params[0])
+
 
     @property
     def device(self) -> str | None:
