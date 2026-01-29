@@ -6,7 +6,6 @@ import sys
 
 import click
 import tabulate
-from click_repl import repl, ExitReplException
 from prompt_toolkit.output import ColorDepth
 from prompt_toolkit.shortcuts import CompleteStyle
 
@@ -65,20 +64,8 @@ def cli(ctx: click.Context, udp: bool, host: str, port: int, device: click.File)
         sys.exit(e.errno)
 
     if ctx.invoked_subcommand is None:
-        @cli.command(hidden=True)
-        def quit():
-            raise ExitReplException()
-
-        @cli.command(hidden=True)
-        def exit():
-            raise ExitReplException()
-
-        @cli.command(name='?', hidden=True)
-        def question():
-            click.echo(ctx.get_help())
-
-        ctx.invoke(info)
-        repl(click.get_current_context(), prompt_kwargs=prompt_kwargs)
+        click.echo(f'use --help for help', err=True)
+        sys.exit(e.errno)
 
 
 @cli.command(help='Show all gains in human-readable format')
